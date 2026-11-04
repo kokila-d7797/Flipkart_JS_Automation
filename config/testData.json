@@ -1,0 +1,32 @@
+{
+    "home": {
+        "titlePattern": "Online Shopping Site for Mobiles",
+        "search": {
+            "placeholderPattern": "Search for Products, Brands and More",
+            "validQuery": "mobile",
+            "emptyQuery": "",
+            "resultsPathPattern": "/search"
+        }
+    },
+
+    "login": {
+        "validMobile": "9876543210",
+        "alphabets": "abcdef",
+        "specialCharacters": "@#$%^&*()",
+        "shortMobile": "98765",
+        "longMobile": "987654321012"
+    },
+
+    "search": {
+            "query": "mobile",
+            "emptyResultQuery": "flipkart-test-no-products-zzq-9281",
+            "sortCondition": "Price -- Low to High",
+        "filters": {
+                "brand": "Apple",
+                "priceMinimum": "₹10000",
+                "priceMaximum": "₹30000"
+        },
+            "minimumResults": 1,
+            "resultsPathPattern": "/search"
+    }
+}

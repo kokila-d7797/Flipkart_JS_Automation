@@ -1,0 +1,12 @@
+{
+  "name": "flipkart-automation",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "npx playwright test",
+    "headed": "npx playwright test --headed",
+    "report": "npx playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.0.0"
+  }
+}
