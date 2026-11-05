@@ -28,5 +28,23 @@
         },
             "minimumResults": 1,
             "resultsPathPattern": "/search"
+    },
+
+    
+    "searchProducts": [
+    {
+      "query": "samsung mobile 5g",
+      "keyword": "samsung"
+    },
+    {
+      "query": "iphone 15",
+      "keyword": "iphone"
     }
+  ],
+  "topResultsToCheck": 5,
+  "urlPatterns": {
+    "searchResults": "/search\\?q=",
+    "productPage": "/p/"
+  }
+
 }

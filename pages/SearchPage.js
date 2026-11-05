@@ -4,10 +4,37 @@ class SearchPage extends BasePage {
     constructor(page) {
         super(page);
         this.searchBox = page.getByRole('textbox', { name: /search for products, brands and more/i }).first();
-        this.resultCards = page.locator('a[href*="/p/"]');
+        this.resultCards = page.locator('a[href*="/p/"]').filter({ hasText: /add to compare|₹/i });
+        this.noResultsMessage = page.getByText(/sorry, no results found|no results found/i).first();
         this.priceSelects = page.getByRole('combobox');
         this.sortOption = (label) => page.getByText(label, { exact: true }).last();
         this.brandOption = (label) => page.getByText(label, { exact: true }).first();
+    }
+
+    async searchProduct(query) {
+        const previousURL = this.page.url();
+        await this.searchBox.fill(query);
+        await this.searchBox.press('Enter');
+        await this.page.waitForURL((url) => url.href !== previousURL, {
+            waitUntil: 'domcontentloaded'
+        });
+        await this.resultCards.first().or(this.noResultsMessage).waitFor({ state: 'visible' });
+    }
+
+    async openFirstProduct() {
+        const firstProduct = this.resultCards.first();
+        await firstProduct.waitFor({ state: 'visible' });
+
+        if (await firstProduct.getAttribute('target') === '_blank') {
+            const [productPage] = await Promise.all([
+                this.page.waitForEvent('popup'),
+                firstProduct.click()
+            ]);
+            return productPage;
+        }
+
+        await firstProduct.click();
+        return this.page;
     }
 
     async openResults(query) {
