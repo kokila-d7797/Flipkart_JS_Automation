@@ -30,7 +30,6 @@
             "resultsPathPattern": "/search"
     },
 
-    
     "searchProducts": [
     {
       "query": "samsung mobile 5g",
@@ -41,10 +40,16 @@
       "keyword": "iphone"
     }
   ],
+
   "topResultsToCheck": 5,
   "urlPatterns": {
     "searchResults": "/search\\?q=",
     "productPage": "/p/"
+  },
+
+  "searchSuggestions": {
+    "searchTerm": "samsung mobile",
+    "expectedSuggestion": "samsung mobile 5g"
   }
 
 }
