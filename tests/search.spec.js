@@ -55,8 +55,7 @@ test.describe('Flipkart Search and Filters', () => {
         await expect.poll(() => searchPage.getSelectedPrice(0)).toBe(minimumPrice.replace(/[^0-9]/g, ''));
 
         // Verify minimum price filter is applied in URL
-        await expect.poll(
-            () => searchPage.getPriceFacets()).toContain(`facets.price_range.from=${minimumValue}`);
+        await expect.poll(() => searchPage.getPriceFacets()).toContain(`facets.price_range.from=${minimumValue}`);
 
         // Verify original search query is retained
         expect(new URL(page.url()).searchParams.get('q')).toBe(testData.search.query);
@@ -84,24 +83,14 @@ test.describe('Flipkart Search and Filters', () => {
         await expect.poll(() => searchPage.getSelectedPrice(1)).toBe(maximumPrice.replace(/[^0-9]/g, ''));
 
         // Verify both filters are applied
-        await expect.poll(
-            () => searchPage.getPriceFacets()).toContain(`facets.price_range.from=${minimumValue}`);
-
-        await expect.poll(
-            () => searchPage.getPriceFacets()
-        ).toContain(
-            `facets.price_range.to=${maximumValue}`
-        );
+        await expect.poll(() => searchPage.getPriceFacets()).toContain(`facets.price_range.from=${minimumValue}`);
+        await expect.poll(() => searchPage.getPriceFacets()).toContain(`facets.price_range.to=${maximumValue}`);
 
         // Verify search query is retained
-        expect(
-            new URL(page.url()).searchParams.get('q')
-        ).toBe(testData.search.query);
+        expect(new URL(page.url()).searchParams.get('q')).toBe(testData.search.query);
 
         // Verify filtered products are displayed
-        await expect(
-            searchPage.resultCards.first()
-        ).toBeVisible();
+        await expect(searchPage.resultCards.first()).toBeVisible();
     });
 
     test('FILTER-04 - Verify sort option is available', async () => {
