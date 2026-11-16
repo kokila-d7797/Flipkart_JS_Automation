@@ -50,6 +50,34 @@
   "searchSuggestions": {
     "searchTerm": "samsung mobile",
     "expectedSuggestion": "samsung mobile 5g"
-  }
+  },
+
+  "BuyNow":{
+  "checkoutUrlPattern": "checkout",
+  "paymentUrlPattern": "payment",
+  "baselineQuantity": 1,
+  "quantity": 2,
+  "cancelledQuantity": 5,
+  "invalidQuantities": [
+    { "name": "zero", "value": "0" },
+    { "name": "above allowed maximum", "value": "99999" }
+  ]
+},
+
+"loginotp":{
+  "manualOtpMs": 250000,
+  "wrongOtp": "000000",
+  "partialOtp": "123",
+  "wrongOtpErrorPattern": "ABC"
+},
+
+"productsearch":{
+  "searchTerm": "Laptop",
+  "titleWordsToMatch": 2
+}
+
+
+
+
 
 }

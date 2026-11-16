@@ -5,8 +5,10 @@ class BasePage {
     }
 
     async navigateToHome() {
-        await this.page.goto('/');
-    }
+    await this.page.goto('/', {
+        waitUntil: 'domcontentloaded'
+    });
+}
 
     async getPageTitle() {
         return await this.page.title();

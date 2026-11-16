@@ -1,0 +1,55 @@
+require('dotenv').config();
+const base = require('@playwright/test');
+const HomePage = require('../pages/HomePage');
+const SearchfunctionPage = require('../pages/Searchfunctionpage');
+const LoginPage = require('../pages/LoginPage');
+const product = require('../config/testData.json');
+
+// The only place the "search -> open first product" flow is written (no home page involved).
+async function openProductPage(page) {
+    const searchPage = new SearchfunctionPage(page);
+    await searchPage.openResults(product.productsearch.searchTerm);
+
+    // Best effort: close the login popup if it is covering the results
+    const closePopup = page.getByRole('button', { name: '✕', exact: true });
+    if (await closePopup.isVisible()) {
+        await closePopup.click();
+    }
+
+    const productPage = await searchPage.openFirstProduct();
+    await productPage.waitForLoaded();
+    return productPage;
+}
+
+// A fresh browser tab that shares the project's baseURL (used where a fixture can't be: beforeAll).
+async function newSharedPage(browser) {
+    const { baseURL } = base.test.info().project.use;
+    const context = await browser.newContext({ baseURL });
+    return context.newPage();
+}
+
+const test = base.test.extend({
+    homePage: async ({ page }, use) => {
+        const homePage = new HomePage(page);
+        await homePage.navigateToHome();
+        await use(homePage);
+    },
+    loginPage: async ({ page }, use) => {
+        await use(new LoginPage(page));
+    },
+    productPage: async ({ page }, use) => {
+        await use(await openProductPage(page));
+    },
+    // Login panel that Buy now opens on the product tab (may be a different tab from `page`)
+    productLoginPage: async ({ productPage }, use) => {
+        await use(new LoginPage(productPage.page));
+    },
+});
+
+module.exports = {
+    test,
+    expect: base.expect,
+    openProductPage,
+    newSharedPage,
+    mobile: process.env.FLIPKART_MOBILE, // secret - keep it in .env, never in test data
+};

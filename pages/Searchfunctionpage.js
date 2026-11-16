@@ -15,11 +15,9 @@ class SearchPage extends BasePage {
 
     // Open search results directly using the search URL
     async openResults(query) {
-        await this.page.goto(
-            `/search?q=${encodeURIComponent(query)}`,
-            { waitUntil: 'domcontentloaded' }
-        );
-    }
+    await this.page.goto(`/search?q=${encodeURIComponent(query)}`, { waitUntil: 'domcontentloaded' });
+    await this.waitForResults();
+}
 
     // Search using the search box
     async search(query) {

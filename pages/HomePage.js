@@ -1,4 +1,4 @@
-
+const { expect } = require('@playwright/test');
 const BasePage = require('./BasePage');
 
 class HomePage extends BasePage {
@@ -15,7 +15,6 @@ class HomePage extends BasePage {
         await this.searchBox.waitFor({ state: 'visible' });
         await this.dismissLoginPopup();
     }
-
     
     async dismissLoginPopup() {
         const closeButton = this.page.getByRole('button', {name: '✕',exact: true});
