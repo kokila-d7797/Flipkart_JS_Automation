@@ -57,6 +57,5 @@ test.describe('Login with mobile OTP', () => {
         const checkoutPage = new CheckoutPage(productPage.page);
         await checkoutPage.waitForLoaded();
         await expect(productLoginPage.mobileInput).toBeHidden();
-        await expect(productPage.).toBeVisible();
     });
 });
