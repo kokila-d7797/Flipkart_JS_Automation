@@ -1,36 +1,36 @@
-{
-    "home": {
-        "titlePattern": "Online Shopping Site for Mobiles",
-        "search": {
-            "placeholderPattern": "Search for Products, Brands and More",
-            "validQuery": "mobile",
-            "emptyQuery": "",
-            "resultsPathPattern": "/search"
-        }
-    },
-
-    "login": {
-        "validMobile": "9876543210",
-        "alphabets": "abcdef",
-        "specialCharacters": "@#$%^&*()",
-        "shortMobile": "98765",
-        "longMobile": "987654321012"
-    },
-
+    {
+  "home": {
+    "titlePattern": "Online Shopping Site for Mobiles",
     "search": {
-            "query": "mobile",
-            "emptyResultQuery": "flipkart-test-no-products-zzq-9281",
-            "sortCondition": "Price -- Low to High",
-        "filters": {
-                "brand": "Apple",
-                "priceMinimum": "₹10000",
-                "priceMaximum": "₹30000"
-        },
-            "minimumResults": 1,
-            "resultsPathPattern": "/search"
-    },
+      "placeholderPattern": "Search for Products, Brands and More",
+      "validQuery": "mobile",
+      "emptyQuery": "",
+      "resultsPathPattern": "/search"
+    }
+  },
 
-    "searchProducts": [
+  "login": {
+    "validMobile": "9876543210",
+    "alphabets": "abcdef",
+    "specialCharacters": "@#$%^&*()",
+    "shortMobile": "98765",
+    "longMobile": "987654321012"
+  },
+
+  "search": {
+    "query": "mobile",
+    "emptyResultQuery": "flipkart-test-no-products-zzq-9281",
+    "sortCondition": "Price -- Low to High",
+    "filters": {
+      "brand": "Apple",
+      "priceMinimum": "₹10000",
+      "priceMaximum": "₹30000"
+    },
+    "minimumResults": 1,
+    "resultsPathPattern": "/search"
+  },
+
+  "searchProducts": [
     {
       "query": "samsung mobile 5g",
       "keyword": "samsung"
@@ -52,32 +52,76 @@
     "expectedSuggestion": "samsung mobile 5g"
   },
 
-  "BuyNow":{
-  "checkoutUrlPattern": "checkout",
-  "paymentUrlPattern": "payment",
-  "baselineQuantity": 1,
-  "quantity": 2,
-  "cancelledQuantity": 5,
-  "invalidQuantities": [
-    { "name": "zero", "value": "0" },
-    { "name": "above allowed maximum", "value": "99999" }
-  ]
+  "BuyNow": {
+    "checkoutUrlPattern": "checkout",
+    "paymentUrlPattern": "payment",
+    "baselineQuantity": 1,
+    "quantity": 2,
+    "cancelledQuantity": 5,
+    "invalidQuantities": [
+      { "name": "zero", "value": "0" },
+      { "name": "above allowed maximum", "value": "99999" }
+    ]
+  },
+
+  "loginotp": {
+    "manualOtpMs": 250000,
+    "wrongOtp": "000000",
+    "partialOtp": "123",
+    "wrongOtpErrorPattern": "ABC"
+  },
+
+  "productsearch": {
+    "searchTerm": "Samsung Galaxy S25",
+    "titleWordsToMatch": 2
 },
 
-"loginotp":{
-  "manualOtpMs": 250000,
-  "wrongOtp": "000000",
-  "partialOtp": "123",
-  "wrongOtpErrorPattern": "ABC"
+  "Ordersummary": {
+    "cartPath": "/viewcart?exploreMode=true&preference=FLIPKART",
+    "checkoutMode": "buyNow",
+
+    "product": {
+    "searchTerm": "Samsung Galaxy S25",
+    "titleWordCount": 4
 },
 
-"productsearch":{
-  "searchTerm": "Laptop",
-  "titleWordsToMatch": 2
-}
+    "login": {
+  "promptTimeoutMs": 10000,
+  "otpPageTimeoutMs": 60000,
+  "otpWaitMs": 180000
+    },
+    "quantity": {
+      "initial": 1,
+      "updated": 2
+    },
 
+    "tolerance": {
+      "amount": 0,
+      "discountPercent": 1
+    },
 
+    "labels": {
+      "steps": ["Address", "Order Summary", "Payment"],
+      "deliverTo": "Deliver to:",
+      "change": "Change",
+      "orderSummary": "Order Summary",
+      "priceDetails": "Price Details",
+      "sellingPrice": "Selling Price",
+      "fees": "Fees",
+      "discounts": "Discounts",
+      "totalAmount": "Total Amount",
+      "protectPromiseFee": "Protect Promise Fee",
+      "deliveryBy": "Delivery by",
+      "continue": "Continue",
+      "itemEndMarkers": ["Protected with", "Delivery by", "Use GST Invoice"]
+    },
 
+    "formats": {
+      "pincode": "\\b\\d{6}\\b",
+      "phone": "\\b\\d{10}\\b",
+      "savings": "You['’]ll save\\s*₹\\s*([\\d,]+)"
+    },
 
-
+    "paymentPageMarkers": "payment options|upi|net banking|cash on delivery|credit / debit"
+  }
 }

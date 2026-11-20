@@ -4,28 +4,39 @@ const HomePage = require('../pages/HomePage');
 const SearchfunctionPage = require('../pages/Searchfunctionpage');
 const LoginPage = require('../pages/LoginPage');
 const product = require('../config/testData.json');
+const mobile = (process.env.FLIPKART_MOBILE || '').replace(/\D/g, '').slice(-10);
 
-// The only place the "search -> open first product" flow is written (no home page involved).
+// The only place the "search -> open first product" flow is written
 async function openProductPage(page) {
     const searchPage = new SearchfunctionPage(page);
     await searchPage.openResults(product.productsearch.searchTerm);
 
-    // Best effort: close the login popup if it is covering the results
-    const closePopup = page.getByRole('button', { name: '✕', exact: true });
-    if (await closePopup.isVisible()) {
-        await closePopup.click();
-    }
+    // Close the login popup if it shows up; never fail the test because of it
+    await page.getByRole('button', { name: '✕', exact: true })
+        .click({ timeout: 3000 })
+        .catch(() => {});
 
     const productPage = await searchPage.openFirstProduct();
     await productPage.waitForLoaded();
     return productPage;
 }
 
-// A fresh browser tab that shares the project's baseURL (used where a fixture can't be: beforeAll).
-async function newSharedPage(browser) {
-    const { baseURL } = base.test.info().project.use;
-    const context = await browser.newContext({ baseURL });
-    return context.newPage();
+// A fresh context for beforeAll, where fixtures are not available
+
+async function newSharedPage(browser, baseURL) {
+    const url = baseURL || process.env.BASE_URL;
+
+    if (!url) {
+        throw new Error(
+            'BASE_URL is missing. Add BASE_URL=https://www.flipkart.com to your .env file'
+        );
+    }
+
+    const context = await browser.newContext({
+        baseURL: url
+    });
+
+    return await context.newPage();
 }
 
 const test = base.test.extend({
@@ -40,7 +51,8 @@ const test = base.test.extend({
     productPage: async ({ page }, use) => {
         await use(await openProductPage(page));
     },
-    // Login panel that Buy now opens on the product tab (may be a different tab from `page`)
+    // Login panel: use the tab where Buy now actually opened the login.
+    // Falls back to the product tab if no new tab opens.
     productLoginPage: async ({ productPage }, use) => {
         await use(new LoginPage(productPage.page));
     },
@@ -51,5 +63,5 @@ module.exports = {
     expect: base.expect,
     openProductPage,
     newSharedPage,
-    mobile: process.env.FLIPKART_MOBILE, // secret - keep it in .env, never in test data
+    mobile,
 };

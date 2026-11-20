@@ -1,89 +1,87 @@
+
 const { expect } = require('@playwright/test');
 const BasePage = require('./BasePage');
 
 class LoginPage extends BasePage {
     constructor(page) {
         super(page);
-        this.mobileInput = page.getByRole('spinbutton', { name: /phone number/i }).first();
+        this.mobileInput = page.getByRole('textbox', {name: 'Phone Number'});
         this.continueButton = page.getByRole('button', { name: /continue/i }).first();
-        this.closeButton = page.getByRole('button', { name: '✕' }).first();
-
-        // NEW - OTP step (the OTP is six single-digit boxes, so there is no single "otpInput")
-        this.panelHeading = page.getByText(/log in (to complete your shopping|for the best experience)/i).first();
-        this.useEmailLink = page.getByText('Use Email-ID');
         this.otpPrompt = page.getByText(/verification code/i).first();
-        this.editLink = page.getByText('Edit', { exact: true });
-        this.verifyButton = page.getByRole('button', { name: /^verify$/i });
+        this.verifyButton = page.getByRole('button', { name: /^verify$/i }).first();
     }
 
-    async open() {
-    await this.mobileInput.waitFor({ state: 'visible', timeout: 15000 });
+    async waitForMobileInput(timeout = 20000) {
+        await expect(this.mobileInput,'Mobile number input should appear after clicking Buy Now').toBeVisible({ timeout });
     }
 
+    // Enter mobile number
     async enterMobileNumber(mobile) {
-        await this.mobileInput.clear();
-        await this.mobileInput.pressSequentially(mobile);
+        await this.waitForMobileInput();
+        await this.mobileInput.fill(mobile);
     }
 
-    async clearMobileNumber() {
-        await this.mobileInput.fill('');
-    }
-
+    // Click Continue
     async clickContinue() {
-        await this.continueButton.click(); // auto-waits until enabled
+        await expect(this.continueButton).toBeVisible();
+        await expect(this.continueButton).toBeEnabled();
+        await this.continueButton.click();
     }
 
-    // CHANGED: works for the popup AND the side panel opened by Buy now (Escape instead of leaving the page)
-    async closeModal() {
-        if (!(await this.mobileInput.isVisible().catch(() => false))) return;
-
-        if (await this.closeButton.isVisible().catch(() => false)) {
-            await this.closeButton.click();
-        } else {
-            await this.page.keyboard.press('Escape');
-        }
-
-        try {
-            await this.mobileInput.waitFor({ state: 'hidden', timeout: 3000 });
-        } catch {
-            await this.page.goto('/', { waitUntil: 'domcontentloaded' });
-            await this.mobileInput.waitFor({ state: 'hidden' });
-        }
+    // Wait for OTP screen
+    async waitForOtpScreen(timeout = 30000) {
+        await expect(
+            this.otpPrompt,
+            'OTP verification screen should appear'
+        ).toBeVisible({ timeout });
     }
 
-    // NEW
-    async waitForOtpScreen() {
-        await this.otpPrompt.waitFor({ state: 'visible' });
-    }
-
-    // NEW: number -> Continue -> OTP screen. Used by the buy-now AND login tests.
-    async requestOtp(mobile) {
+    // Mobile number -> Continue -> OTP screen
+    async requestOtp(mobile, timeout = 30000) {
         await this.enterMobileNumber(mobile);
         await this.clickContinue();
-        await this.waitForOtpScreen();
+        await this.waitForOtpScreen(timeout);
     }
 
-    // CHANGED: the first OTP box is auto-focused, so typing the digits fills all six boxes
-    async enterOTP(otp) {
-        await this.page.keyboard.type(otp, { delay: 100 });
-    }
+    // Wait for you to enter OTP manually.
+    // Click Verify automatically when it becomes enabled.
+    async completeOtpManually(timeoutMs = 120000) {
+    console.log('Enter OTP manually in the browser.');
 
-    // NEW
-    async verifyOtp() {
+    await expect(this.verifyButton).toBeVisible({
+        timeout: 30000
+    });
+
+    await expect(this.verifyButton).toBeEnabled({
+        timeout: timeoutMs
+    });
+
+    await this.verifyButton.scrollIntoViewIfNeeded();
+
+    console.log('Clicking Verify - first attempt...');
+    await this.verifyButton.click();
+
+    // Check whether OTP screen closes or authentication succeeds.
+    const firstClickSucceeded = await this.otpPrompt
+        .waitFor({ state: 'hidden', timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+
+    if (!firstClickSucceeded) {
+        console.log('OTP screen is still visible. Checking Verify again.');
+
+        await expect(this.verifyButton).toBeVisible({
+            timeout: 10000
+        });
+
+        await expect(this.verifyButton).toBeEnabled();
+
+        console.log('Clicking Verify - second attempt...');
         await this.verifyButton.click();
     }
 
-    // NEW: YOU type the OTP in the browser; Verify is clicked as soon as it becomes enabled
-    async completeOtpManually(timeoutMs) {
-        console.log('>>> Type the OTP in the browser window now. Verify is clicked automatically when all digits are entered.');
-        await expect(this.verifyButton).toBeEnabled({ timeout: timeoutMs });
-        await this.verifyOtp();
-    }
-
-    // NEW
-    otpError(pattern) {
-        return this.page.getByText(new RegExp(pattern, 'i')).first();
-    }
+    console.log('Verify click attempts completed.');
+}
 }
 
 module.exports = LoginPage;

@@ -54,7 +54,6 @@ test.describe('Flipkart Login Tests', () => {
 
     test('LOGIN-06 - Verify mobile number with fewer than 10 digits is not accepted @regression', async () => {
         await loginPage.enterMobileNumber(testData.login.shortMobile);
-
         await expect(loginPage.mobileInput).toBeVisible();
         await expect(loginPage.continueButton).toBeDisabled();
         await expect(loginPage.otpInput).toBeHidden();
@@ -62,7 +61,6 @@ test.describe('Flipkart Login Tests', () => {
 
     test('LOGIN-07 - Verify mobile number with more than 10 digits is not accepted @regression', async () => {
         await loginPage.enterMobileNumber(testData.login.longMobile);
-
         await expect(loginPage.mobileInput).toBeVisible();
         await expect(loginPage.continueButton).toBeDisabled();
         await expect(loginPage.otpInput).toBeHidden();

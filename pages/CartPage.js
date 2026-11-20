@@ -6,6 +6,14 @@ class CartPage extends BasePage {
         this.itemLinks = page.locator('a[href*="/p/"]').filter({ hasText: /\S/ });
         this.removeButton = page.getByText('Remove', { exact: true });
         this.emptyCartMessage = page.getByText(/your cart is empty|missing cart items/i).first();
+        this.placeOrderButton = page.getByRole('button', { name: /place order/i }).first();
+    }
+
+    async openIfNeeded(cartPath) {
+        if (!this.page.url().includes('/viewcart')) {
+            await this.page.goto(cartPath, { waitUntil: 'domcontentloaded' });
+        }
+        await this.placeOrderButton.waitFor({ state: 'visible', timeout: 15000 });
     }
 
     async open(cartPath) {

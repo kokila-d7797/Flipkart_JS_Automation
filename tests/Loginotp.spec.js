@@ -34,7 +34,6 @@ test.describe('Login with mobile OTP', () => {
         await productLoginPage.requestOtp(mobile);
         await productLoginPage.enterOTP(otp.wrongOtp);
         await productLoginPage.verifyOtp();
-
         await expect(productLoginPage.otpError(otp.wrongOtpErrorPattern)).toBeVisible();
         await expect(productLoginPage.otpPrompt).toBeVisible();
     });
@@ -49,10 +48,8 @@ test.describe('Login with mobile OTP', () => {
 
     test('LOGIN-05 - Typing the correct OTP logs the user in @manual-otp', async ({ productPage, productLoginPage }) => {
         test.setTimeout(otp.manualOtpMs + 120000);
-
         await productLoginPage.requestOtp(mobile);
         await productLoginPage.completeOtpManually(otp.manualOtpMs);   // <-- you type the OTP here
-
         // A login through Buy now continues to checkout on the same (product) tab
         const checkoutPage = new CheckoutPage(productPage.page);
         await checkoutPage.waitForLoaded();
