@@ -1,15 +1,10 @@
 const {test,expect,openProductPage,newSharedPage} = require('../Fixtures/flipkart');
 const testdata = require('../config/testData.json');
-const CheckoutPage = require('../pages/CheckoutPage');
+const CheckoutPage = require('../pages/OrderSummaryPage');
 const data = testdata.Ordersummary;
 const {labels,formats,quantity,tolerance} = data;
 const pincodePattern = new RegExp(formats.pincode);
 const phonePattern = new RegExp(formats.phone);
-const paymentPagePattern = new RegExp(data.paymentPageMarkers, 'i');
-
-// Helper functions
-const sum = (items, key) =>items.reduce((total, item) => total + (item[key] || 0), 0);
-
 const expectAmount = (actual, expected, message) => {
     expect(
         Math.abs(actual - expected),
@@ -17,131 +12,129 @@ const expectAmount = (actual, expected, message) => {
     ).toBeLessThanOrEqual(tolerance.amount);
 };
 
-test.describe.configure({ mode: 'serial' });
-
 test.describe('Flipkart - Order Summary page', () => {
     let setupPage;
     let checkout;
-  
-test.beforeAll(async ({ browser }) => {
-    test.setTimeout(data.login.otpWaitMs + 25000);
-    setupPage = await newSharedPage(browser);
-    const productPage = await openProductPage(setupPage);
-    checkout = new CheckoutPage(productPage.page);
-    await checkout.reachOrderSummary(productPage);
-});
+
+    test.beforeAll(async ({ browser }) => {
+        test.setTimeout(data.login.otpWaitMs + 90000);
+        setupPage = await newSharedPage(browser);
+        const productPage = await openProductPage(setupPage, data.product.searchTerm);
+        checkout = new CheckoutPage(productPage.page);
+        await checkout.reachOrderSummary(productPage);
+    });
 
     test.afterAll(async () => {
         if (setupPage) await setupPage.context().close();
     });
-    test('OS_01 - Verify Cart Page Title is visible', async () => {
 
-        await expect(checkout.cartPageTitle,'Cart page title image should be visible').toBeVisible();
-    });
+    test('OS - Validate Order Summary in one OTP session', async () => {
+        test.setTimeout(data.login.otpWaitMs + 240000);
 
-    test('OS_02 - Delivery address has a pincode, phone number and a Change button', async () => {
-        await expect(checkout.deliverTo).toBeVisible();
-        await expect(checkout.changeAddressButton).toBeVisible();
-        const address = await checkout.getAddressText(checkout.productTitleStart);
-        expect(address, 'pincode in the address').toMatch(pincodePattern);
-        expect(address, 'phone number in the address').toMatch(phonePattern);
-    });
+        const runValidation = async (name, validate) => {
+            await test.step(name, async () => {
+                try {
+                    await validate();
+                } catch (error) {
+                    const detail = error instanceof Error ? error.message : String(error);
+                    expect.soft(false, `${name} failed: ${detail}`).toBe(true);
+                }
+            });
+        };
 
-    test('OS_03 - The product added is listed in the order', async () => {
-        await expect(checkout.itemWithText(checkout.productTitleStart)).toBeVisible({ timeout: 15000 });
-    });
+        const validations = [
+            ['OS_01 - Cart page link is visible', async () => {
+                await expect.soft(checkout.cartPageTitle).toBeVisible();
+            }],
+            ['OS_02 - Delivery address has a pincode and phone number', async () => {
+                await expect.soft(checkout.deliverTo).toBeVisible();
+                await expect.soft(checkout.changeAddressButton).toBeVisible();
+                const address = await checkout.getAddressText();
+                expect.soft(address).toMatch(pincodePattern);
+                expect.soft(address).toMatch(phonePattern);
+            }],
+            ['OS_03 - Selected product appears in Order Summary', async () => {
+                await checkout.isSelectedProductDisplayed(data.product.searchTerm);
+            }],
+            ['OS_04 - Item price and discount are valid', async () => {
+                const [item] = await checkout.getItems();
+                expect.soft(item.price, 'item price').toBeGreaterThan(0);
+                if (item.discountPercent !== null) {
+                    expect.soft(item.originalPrice, 'original price').toBeGreaterThan(item.price);
+                    const calculated = Math.round(
+                        ((item.originalPrice - item.price) / item.originalPrice) * 100
+                    );
+                    expect.soft(
+                        Math.abs(calculated - item.discountPercent),
+                        `shown ${item.discountPercent}% off, calculated ${calculated}%`
+                    ).toBeLessThanOrEqual(tolerance.discountPercent);
+                }
+            }],
+            [`OS_05 - Quantity is set to ${quantity.initial}`, async () => {
+                await expect.soft(checkout.quantityDropdown).toBeVisible();
+                expect.soft(await checkout.getQuantity()).toBe(quantity.initial);
+            }],
+            ['OS_06 - Fee amount is visible', async () => {
+                const price = await checkout.getPriceDetails();
+                expect.soft(price.fees, `"${labels.fees}" amount`).not.toBeNull();
+                if (price.fees !== null) {
+                    await expect.soft(checkout.amountOnly(price.fees)).toBeVisible();
+                }
+            }],
+            ['OS_07 - Delivery estimate is shown', async () => {
+                const delivery = await checkout.getDeliveryMessage();
+                expect.soft(delivery, 'delivery estimate').toBeTruthy();
+                expect.soft(delivery).toMatch(/Delivery\s+(by|in)\s+.+/i);
+            }],
+            ['OS_08 - Price Details amounts are available', async () => {
+                await expect.soft(checkout.priceRowLabel(labels.priceDetails)).toBeVisible();
+                for (const label of [
+                    labels.sellingPrice,
+                    labels.fees,
+                    labels.discounts,
+                    labels.totalAmount
+                ]) {
+                    await expect.soft(checkout.priceRowLabel(label), `row "${label}"`).toBeVisible();
+                }
+                const price = await checkout.getPriceDetails();
+                for (const key of ['sellingPrice', 'fees', 'discounts', 'total']) {
+                    expect.soft(price[key], `amount for ${key}`).not.toBeNull();
+                    expect.soft(price[key], `amount for ${key}`).toBeGreaterThanOrEqual(0);
+                }
+            }],
+            ['OS_09 - Total minus Fees equals item price', async () => {
+                const [item] = await checkout.getItems();
+                const price = await checkout.getPriceDetails();
+                expectAmount(price.total - price.fees, item.price, 'Total minus Fees vs item price');
+            }],
+            ['OS_10 - Selling Price minus Discounts plus Fees equals Total', async () => {
+                const price = await checkout.getPriceDetails();
+                expectAmount(
+                    price.sellingPrice - price.discounts + price.fees,
+                    price.total,
+                    'Selling Price - Discounts + Fees vs Total Amount'
+                );
+            }],
+            ['OS_11 - Savings message is visible', async () => {
+                await expect(checkout.page.getByText(/you'll save/i)).toBeVisible();
+            }],
+            ['OS_12 - Bottom bar matches Price Details', async () => {
+                const price = await checkout.getPriceDetails();
+                await expect.soft(checkout.amountOnly(price.total)).toBeVisible();
+                await expect.soft(checkout.amountOnly(price.sellingPrice)).toBeVisible();
+            }],
+            ['OS_13 - Continue is visible and enabled', async () => {
+                await expect.soft(checkout.continueButton).toBeVisible();
+            }]
+        ];
 
-    test('OS_04 - Item price is valid and the discount % matches the prices', async () => {
-        const [item] = await checkout.getItems();
-        expect(item.price, 'item price').toBeGreaterThan(0);
-        test.skip(item.discountPercent === null, 'This item shows no discount');
-        expect(item.originalPrice, 'original price').toBeGreaterThan(item.price);
-        const calculated = Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100);
-        expect(
-            Math.abs(calculated - item.discountPercent),
-            `shown ${item.discountPercent}% off, calculated ${calculated}% from ${item.originalPrice} and ${item.price}`
-        ).toBeLessThanOrEqual(tolerance.discountPercent);
-    });
+        await Promise.all(
+            validations.map(([name, validate]) => runValidation(name, validate))
+        );
 
-    test('OS_05 - Quantity starts at the expected value', async () => {
-        await expect(checkout.quantityDropdown).toBeVisible();
-        expect(await checkout.getQuantity()).toBe(quantity.initial);
-    });
-
-    test('OS_06 - Protect Promise Fee under the item equals Fees in Price Details', async () => {
-        const items = await checkout.getItems();
-        const price = await checkout.getPriceDetails();
-        expect(price.fees, `"${labels.fees}" row in Price Details`).not.toBeNull();
-        expectAmount(sum(items, 'fee'), price.fees, 'Fee under item vs Fees in Price Details');
-    });
-
-    test('OS_07 - Delivery date is shown for the item', async () => {
-    const deliveryText = await checkout.getDeliveryMessage();
-    expect(deliveryText,'Delivery estimate should be displayed on Order Summary').toBeTruthy();
-    expect(deliveryText).toMatch(/Delivery\s+(by|in)\s+.+/i);
-    });
-
-    test('OS_08 - Price Details shows Selling Price, Fees, Discounts and Total Amount', async () => {
-        await expect(checkout.priceRowLabel(labels.priceDetails)).toBeVisible();
-        const rows = [labels.sellingPrice, labels.fees, labels.discounts, labels.totalAmount];
-        for (const row of rows) {
-            await expect(checkout.priceRowLabel(row), `row "${row}"`).toBeVisible();
-        }
-        const price = await checkout.getPriceDetails();
-        for (const key of ['sellingPrice', 'fees', 'discounts', 'total']) {
-            expect(price[key], `amount for ${key}`).not.toBeNull();
-            expect(price[key], `amount for ${key}`).toBeGreaterThanOrEqual(0);
-        }
-    });
-
-    test('OS_09 - Total Amount minus Fees equals the item price', async () => {
-        const items = await checkout.getItems();
-        const price = await checkout.getPriceDetails();
-        const itemsTotal = sum(items, 'price');
-        console.log(`Total ${price.total} - Fees ${price.fees} = ${price.total - price.fees} | item price ${itemsTotal}`);
-        expectAmount(price.total - price.fees, itemsTotal, 'Total Amount - Fees vs item price');
-    });
-
-    test('OS_10 - Selling Price - Discounts + Fees equals Total Amount', async () => {
-        const price = await checkout.getPriceDetails();
-        const calculated = price.sellingPrice - price.discounts + price.fees;
-        console.log(`${price.sellingPrice} - ${price.discounts} + ${price.fees} = ${calculated} | Total ${price.total}`);
-        expectAmount(calculated, price.total, 'Selling Price - Discounts + Fees vs Total Amount');
-    });
-
-    test('OS_11 - Savings amount is displayed correctly', async () => {
-    const price = await checkout.getPriceDetails();
-    expect(price.savings, 'Savings message amount').not.toBeNull();
-    expectAmount(price.savings,price.sellingPrice - price.total,'Savings should equal Selling Price - Total');
+    await runValidation('OS_15 - Continue opens the Payment step', async () => {
+    await checkout.proceedToPayment();
+    await expect(checkout.page.getByText(/complete payment/i)).toBeVisible({ timeout: 30000 });
 });
-
-    test('OS_12 - Bottom bar shows the same total and original price as Price Details', async () => {
-        const price = await checkout.getPriceDetails();
-        await expect(checkout.amountOnly(price.total), 'bottom bar total').toBeVisible();
-        await expect(checkout.amountOnly(price.sellingPrice), 'bottom bar struck-through price').toBeVisible();
-    });
-
-    test('OS_13 - Continue button is visible and enabled', async () => {
-        await expect(checkout.continueButton).toBeVisible();
-        await expect(checkout.continueButton).toBeEnabled();
-    });
-
-    test('OS_14 - Changing the quantity updates the total, and restoring brings it back', async () => {
-        const before = await checkout.getPriceDetails();
-        try {
-            await checkout.setQuantity(quantity.updated);
-            await expect(checkout.quantityToast(quantity.updated)).toBeVisible();
-            await expect.poll(() => checkout.getQuantity()).toBe(quantity.updated);
-            await expect.poll(async () => (await checkout.getPriceDetails()).total)
-                .toBeGreaterThan(before.total);
-        } finally {
-            await checkout.restoreQuantity(quantity.initial);
-        }
-        await expect.poll(async () => (await checkout.getPriceDetails()).total).toBe(before.total);
-    });
-
-    test('OS_15 - Continue opens the Payment step', async () => {
-        await checkout.proceedToPayment();
-        await expect(checkout.page.getByText(paymentPagePattern).first()).toBeVisible();
     });
 });

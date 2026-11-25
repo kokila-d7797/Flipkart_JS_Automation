@@ -1,5 +1,5 @@
 const { test, expect, mobile } = require('../fixtures/flipkart');
-const CheckoutPage = require('../pages/CheckoutPage');
+const CheckoutPage = require('../pages/OrderSummaryPage');
 const testData = require('../config/testData.json');
 
 // Works whether the OTP values sit under "otp" in testData.json or at the top level

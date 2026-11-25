@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const HomePage = require('../pages/HomePage');
+const SearchfunctionPage = require('../pages/Searchfunctionpage');
 const testData = require('../config/testData.json');
 
 test.describe('Flipkart Home Page', () => {
@@ -37,12 +38,19 @@ test.describe('Flipkart Home Page', () => {
     test('HOME-05 - Valid search opens a results URL @smoke @regression', async ({ page }) => {
         await homePage.searchFor(testData.home.search.validQuery);
         await expect(page).toHaveURL(new RegExp(testData.home.search.resultsPathPattern, 'i'));
+
+        const searchPage = new SearchfunctionPage(page);
+        await expect(searchPage.resultCards.first()).toBeVisible();
+        expect(await searchPage.resultCards.count()).toBeGreaterThanOrEqual(
+            testData.search.minimumResults
+        );
     });
 
     test('HOME-06 - Empty search does not open results @regression', async ({ page }) => {
-        await homePage.searchFor(testData.home.search.emptyQuery);
+        await homePage.clearSearch();
+        await expect(homePage.searchBox).toHaveValue(testData.home.search.emptyQuery);
         await expect(page).not.toHaveURL(new RegExp(testData.home.search.resultsPathPattern, 'i'));
-    })
+    });
 
     test('HOME-07 - Login entry point is available @smoke @regression', async () => {
         await expect(homePage.loginLink).toBeVisible();
@@ -50,7 +58,7 @@ test.describe('Flipkart Home Page', () => {
 
     test('HOME-08 - Login entry point opens the login modal @smoke @regression', async ({ page }) => {
         await homePage.openLogin();
-        await expect(page.getByRole('spinbutton', { name: /phone number/i })).toBeVisible();
+        await expect(page.getByRole('textbox', { name: /phone number/i })).toBeVisible();
     });
 
 });

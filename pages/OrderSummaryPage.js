@@ -8,24 +8,24 @@ const { getMobile } = require('../config/env');
 
 // Order Summary step (Address > Order Summary > Payment) reached after Buy now + login
 
-class CheckoutPage extends BasePage {
+class OrderSummaryPage extends BasePage {
     constructor(page) {
         super(page);
         this.bindLocators(page);
     }
 
     bindLocators(page) {
-        this.deliverTo = page.getByText(labels.deliverTo);
-        this.cartPageTitle = this.page.locator("//div[@class='css-g5y9jx r-1awozwy r-1777fci r-1udh08x']//div//img");
-        this.changeAddressButton = page.getByRole('button', { name: labels.change });
+        this.deliverTo = page.getByText(labels.deliverTo, { exact: true });
+        this.cartPageTitle = page.getByRole('link', { name: /\bCart\b/i }).first();
+        this.changeAddressButton = page.getByText('Change', { exact: true });
         this.quantityDropdown = page.getByText(/^Qty:\s*\d+/).first();
-        this.moreOption = page.getByText('more', { exact: true });
+        this.moreOption = page.getByText(/^more$/i);
         this.quantityDialogTitle = page.getByText('Enter Quantity');
         this.quantityInput = page.getByRole('spinbutton', { name: 'Quantity' }).or(page.getByRole('textbox', { name: 'Quantity' }));
         this.applyButton = page.getByRole('button', { name: /^apply$/i });
         this.cancelButton = page.getByRole('button', { name: /^cancel$/i });
-        this.continueButton = page.getByRole('button', {name: new RegExp(`^${labels.continue}$`, 'i')}).or(page.getByText(new RegExp(`^${labels.continue}$`, 'i'))).first();
-        this.deliveryMessage = this.page.getByText(/Delivery by/i).first();
+        this.continueButton = page.getByText(new RegExp(labels.continue, 'i')).last();
+        this.deliveryMessage = page.getByText(/Delivery\s+(by|in)/i).first();
     }
 
     escapeRegExp(value) {
@@ -48,6 +48,26 @@ class CheckoutPage extends BasePage {
         return await this.page.locator('body').innerText();
     }
 
+    async getCartItemCount() {
+        const orderItems = this.page.getByText(/^Qty:\s*\d+/);
+        const orderItemCount = await orderItems.count();
+        if (orderItemCount > 0) return orderItemCount;
+
+        const bodyText = await this.getBodyText();
+        const match = bodyText.match(/Cart\s*\((\d+)\s*items?\)/i);
+
+        if (!match) {
+            throw new Error('Cart item count was not found on the Order Summary page');
+        }
+
+        return Number(match[1]);
+    }
+
+    async isSelectedProductDisplayed(productName) {
+        expect(productName, 'Selected product title should be available').toBeTruthy();
+        await expect(this.itemWithText(productName)).toBeVisible();
+    }
+
     async isCartPageTitleVisible() {
         await expect(this.cartPageTitle).toBeVisible({timeout: 10000
     });
@@ -58,10 +78,6 @@ class CheckoutPage extends BasePage {
     async reachOrderSummary(productPage) {
     const mobile = getMobile();
     const login = new LoginPage(this.page);
-
-    this.productTitleStart = await productPage.getTitleStart(
-        data.product.titleWordCount
-    );
 
     // STEP 1: Click Buy Now and wait for login panel
 console.log('Step 1: Clicking Buy Now...');
@@ -83,14 +99,10 @@ await login.completeOtpManually(data.login.otpWaitMs);
 
 console.log('Step 4: OTP verification submitted.');
 
-// STEP 5: Click Buy Now again after login
-await productPage.clickBuyNowAfterLogin();
-
-// STEP 6: Wait for Order Summary
-console.log('Step 5: Waiting for Order Summary...');
+// STEP 5: Wait for Order Summary directly after OTP
+console.log('Step 5: Waiting for Order Summary page after OTP verification...');
 
 await this.waitForOrderSummaryPage(60000);
-
 await this.waitForLoaded();
 
 console.log('Step 6: Order Summary page loaded successfully.');
@@ -145,7 +157,11 @@ console.log('Step 6: Order Summary page loaded successfully.');
 
     // The bottom bar shows plain numbers (no rupee sign), e.g. "71,296"
     amountOnly(amount) {
-        return this.page.getByText(this.formatAmount(amount), { exact: true }).first();
+        return this.page.getByText(this.formatAmount(amount), { exact: false }).last();
+    }
+
+    formatAmount(amount) {
+        return Number(amount).toLocaleString('en-IN');
     }
 
     quantityToast(quantity) {
@@ -160,20 +176,20 @@ console.log('Step 6: Order Summary page loaded successfully.');
     // Price Details panel: { sellingPrice, fees, discounts, total, savings }
     async getPriceDetails() {
         const bodyText = await this.page.locator('body').innerText();
-
-const savingsMatch = bodyText.match(
-    /You['’]ll\s+save\s*₹?\s*([\d,]+)/i
-);
-
-const savings = savingsMatch
-    ? Number(savingsMatch[1].replace(/,/g, ''))
-    : null;
-
+        const getAmountAfterLabel = (label) => {
+            const match = bodyText.match(
+                new RegExp(`${this.escapeRegExp(label)}\\s*₹\\s*([\\d,]+)`, 'i')
+            );
+            return match ? this.parseAmount(match[1]) : null;
+        };
+        const savingsMatch = bodyText.match(new RegExp(formats.savings, 'i'));
         return {
-    sellingPrice,
-    total,
-    savings
-};
+            sellingPrice: getAmountAfterLabel(labels.sellingPrice),
+            fees: getAmountAfterLabel(labels.fees),
+            discounts: getAmountAfterLabel(labels.discounts),
+            total: getAmountAfterLabel(labels.totalAmount),
+            savings: savingsMatch ? this.parseAmount(savingsMatch[1]) : null
+        };
     }
 
     async getTotalAmount() {
@@ -193,7 +209,29 @@ const savings = savingsMatch
 
         const quantities = [...text.matchAll(/Qty:\s*(\d+)/g)].filter((m) => m.index >= regionStart);
         if (quantities.length === 0) {
-            throw new Error('No items found (no "Qty: n" text) on the Order Summary page');
+            const cartStart = text.search(/Cart\s*\(\d+\s*items?\)/i);
+            if (cartStart === -1) {
+                throw new Error('No cart item summary was found on the Order Summary page');
+            }
+
+            const itemText = text.slice(cartStart);
+            const end = itemText.search(/Use GST Invoice|Price Details/i);
+            const region = end === -1 ? itemText : itemText.slice(0, end);
+            const amounts = [...region.matchAll(/₹\s*([\d,]+)/g)]
+                .map((match) => this.parseAmount(match[1]));
+            if (amounts.length === 0) {
+                throw new Error('No item prices were found in the Order Summary');
+            }
+
+            const discountMatch = region.match(/(\d+)\s*%\s*off/i);
+            const feeMatch = region.match(feeRegex);
+            return [{
+                quantity: data.quantity.initial,
+                price: amounts.length > 1 ? amounts[1] : amounts[0],
+                originalPrice: amounts.length > 1 ? amounts[0] : null,
+                discountPercent: discountMatch ? Number(discountMatch[1]) : null,
+                fee: feeMatch ? this.parseAmount(feeMatch[1]) : 0
+            }];
         }
 
         const items = [];
@@ -231,8 +269,8 @@ const savings = savingsMatch
         return items;
     }
 
-    // Text of the delivery address block (from "Deliver to:" until the product title)
-    async getAddressText(untilText) {
+    // Text of the delivery address block, ending before the cart item summary.
+    async getAddressText() {
     const text = await this.page.locator('body').innerText();
 
     const start = text.indexOf(labels.deliverTo);
@@ -241,11 +279,9 @@ const savings = savingsMatch
         throw new Error(`"${labels.deliverTo}" was not found on the page`);
     }
 
-    let end = untilText ? text.indexOf(untilText, start) : -1;
+    let end = text.search(/Cart\s*\(\d+\s*items?\)/i);
 
-    if (end === -1) {
-        end = text.search(/Qty:\s*\d+/);
-    }
+    if (end === -1) end = text.search(/Qty:\s*\d+/);
 
     return text.slice(start, end === -1 ? undefined : end).trim();
 }
@@ -253,15 +289,15 @@ const savings = savingsMatch
     // ---------- actions ----------
 
     async openQuantityDialog() {
-        await this.quantityDropdown.click();
-        await this.moreOption.click();
-        await expect(this.quantityDialogTitle).toBeVisible();
+        await this.quantityDropdown.click({ timeout: 10000 });
+        await this.moreOption.click({ timeout: 10000 });
+        await expect(this.quantityDialogTitle).toBeVisible({ timeout: 10000 });
     }
 
     async setQuantity(quantity) {
         await this.openQuantityDialog();
-        await this.quantityInput.fill(String(quantity));
-        await this.applyButton.click();
+        await this.quantityInput.fill(String(quantity), { timeout: 10000 });
+        await this.applyButton.click({ timeout: 10000 });
     }
 
     async restoreQuantity(quantity) {
@@ -275,7 +311,7 @@ const savings = savingsMatch
     }
 
     async proceedToPayment() {
-        await this.continueButton.click();
+        await this.continueButton.click({ timeout: 10000 });
     }
 
     async getDeliveryMessage() {

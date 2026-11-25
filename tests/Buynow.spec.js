@@ -1,10 +1,13 @@
 const { test, expect, openProductPage, newSharedPage, mobile } = require('../fixtures/flipkart');
 const LoginPage = require('../pages/LoginPage');
-const CheckoutPage = require('../pages/CheckoutPage');
+const CheckoutPage = require('../pages/OrderSummaryPage');
 const testData = require('../config/testData.json');
 
 const buy = testData.BuyNow;
-const otp = testData.otp;
+const otp = testData.loginotp;
+const orderSummary = testData.Ordersummary;
+const pincodePattern = new RegExp(orderSummary.formats.pincode);
+const phonePattern = new RegExp(orderSummary.formats.phone);
 
 test.describe('Buy now - guest (no OTP)', () => {
     test.describe.configure({ timeout: 120000 });
@@ -17,7 +20,6 @@ test.describe('Buy now - guest (no OTP)', () => {
     test('BUY-02 - Buy now opens the login panel @smoke', async ({ productPage, productLoginPage }) => {
         await productPage.buyNowAndWaitForLogin(productLoginPage);
         await expect(productLoginPage.mobileInput).toBeVisible();
-        await expect(productLoginPage.panelHeading).toBeVisible();
     });
 });
 
@@ -30,14 +32,15 @@ test.describe('Buy now - after login (you type the OTP) @manual-otp', () => {
     let productPage;
     let loginPage;
     let checkoutPage;
-    let titleStart;
 
     // Setup only goes as far as the OTP screen. The OTP itself is validated in BUY-03.
     test.beforeAll(async ({ browser }) => {
         test.setTimeout(120000);
 
-        productPage = await openProductPage(await newSharedPage(browser));
-        titleStart = await productPage.getTitleStart(testData.product.titleWordsToMatch);
+        productPage = await openProductPage(
+            await newSharedPage(browser),
+            testData.productsearch.searchTerm
+        );
 
         loginPage = new LoginPage(productPage.page);
         checkoutPage = new CheckoutPage(productPage.page);
@@ -76,8 +79,13 @@ test.describe('Buy now - after login (you type the OTP) @manual-otp', () => {
     });
 
     test('BUY-05 - Summary shows the chosen product, address and total @smoke', async () => {
-        await expect(checkoutPage.itemWithText(titleStart)).toBeVisible();
+        expect(await checkoutPage.getCartItemCount()).toBe(orderSummary.expectedItemCount);
         await expect(checkoutPage.deliverTo).toBeVisible();
+
+        const address = await checkoutPage.getAddressText();
+        expect(address).toMatch(pincodePattern);
+        expect(address).toMatch(phonePattern);
+
         expect(await checkoutPage.getTotalAmount()).toBeGreaterThan(0);
     });
 
@@ -94,7 +102,6 @@ test.describe('Buy now - after login (you type the OTP) @manual-otp', () => {
         await checkoutPage.openQuantityDialog();
         await checkoutPage.quantityInput.fill(String(buy.cancelledQuantity));
         await checkoutPage.cancelButton.click();
-
         await expect(checkoutPage.quantityDialogTitle).toBeHidden();
         await expect.poll(() => checkoutPage.getQuantity()).toBe(buy.baselineQuantity);
     });

@@ -7,9 +7,9 @@ const product = require('../config/testData.json');
 const mobile = (process.env.FLIPKART_MOBILE || '').replace(/\D/g, '').slice(-10);
 
 // The only place the "search -> open first product" flow is written
-async function openProductPage(page) {
+async function openProductPage(page, searchTerm = product.productsearch.searchTerm) {
     const searchPage = new SearchfunctionPage(page);
-    await searchPage.openResults(product.productsearch.searchTerm);
+    await searchPage.openResults(searchTerm);
 
     // Close the login popup if it shows up; never fail the test because of it
     await page.getByRole('button', { name: '✕', exact: true })

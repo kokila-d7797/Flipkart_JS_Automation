@@ -3,6 +3,7 @@ const { test, expect } = require('@playwright/test');
 
 const HomePage = require('../pages/HomePage');
 const SearchSuggestionPage = require('../pages/SearchsuggestionPage');
+const SearchfunctionPage = require('../pages/Searchfunctionpage');
 const testData = require('../config/testData.json');
 
 test.describe('Flipkart Search Suggestions', () => {
@@ -31,5 +32,23 @@ test.describe('Flipkart Search Suggestions', () => {
         await searchSuggestionPage.selectSuggestion(
             testData.searchSuggestions.expectedSuggestion
         );
+
+        await expect(page).toHaveURL(new RegExp(testData.home.search.resultsPathPattern, 'i'));
+        await expect.poll(() => new URL(page.url()).searchParams.get('q'))
+            .toBe(testData.searchSuggestions.expectedSuggestion);
+
+        const resultsPage = new SearchfunctionPage(page);
+        await expect(resultsPage.resultCards.first()).toBeVisible();
+
+        const resultCount = await resultsPage.resultCards.count();
+        expect(resultCount).toBeGreaterThan(0);
+
+        const expectedKeyword = new RegExp(
+            testData.searchSuggestions.expectedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+            'i'
+        );
+        for (let index = 0; index < resultCount; index++) {
+            await expect.soft(resultsPage.resultCards.nth(index)).toContainText(expectedKeyword);
+        }
     });
 });

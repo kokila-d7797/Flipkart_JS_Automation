@@ -14,36 +14,27 @@ test.describe('Flipkart Search and Filters', () => {
     test('SEARCH-01 - Verify search results', async ({ page }) => {
 
         const url = new URL(page.url());
-        // Verify search results URL
         expect(url.pathname).toMatch(new RegExp(testData.search.resultsPathPattern, 'i'));
-
-        // Verify submitted search query
         expect(url.searchParams.get('q')).toBe(testData.search.query);
-
-        // Verify search box contains the query
         await expect(searchPage.searchBox).toHaveValue(testData.search.query);
-
-        // Verify product results are displayed
         await expect(searchPage.resultCards.first()).toBeVisible();
-
-        // Verify minimum number of results
         expect(await searchPage.resultCards.count()).toBeGreaterThanOrEqual(testData.search.minimumResults);
     });
 
-    test('SEARCH-02 - Verify search results match the expected product', async () => {
+    for (const { query, keyword } of testData.searchProducts) {
+        test(`SEARCH-02 - Results for "${query}" match the configured keyword`, async () => {
+            await searchPage.openResults(query);
+            await expect(searchPage.searchBox).toHaveValue(query);
 
-        const topResults = await searchPage.getTopResults(testData.topResultsToCheck);
+            const topResults = await searchPage.getTopResults(testData.topResultsToCheck);
+            expect(topResults.length).toBeGreaterThan(0);
 
-        // Verify that results are available
-        expect(topResults.length).toBeGreaterThan(0);
-
-        // Verify product names contain the expected keyword
-        const keyword = new RegExp(testData.search.expectedKeyword,'i');
-
-        for (const productCard of topResults) {
-            await expect.soft(productCard).toContainText(keyword);
-        }
-    });
+            const expectedKeyword = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+            for (const productCard of topResults) {
+                await expect.soft(productCard).toContainText(expectedKeyword);
+            }
+        });
+    }
 
     test('FILTER-01 - Verify minimum price filter', async ({ page }) => {
 
@@ -65,32 +56,26 @@ test.describe('Flipkart Search and Filters', () => {
     });
 
 
-    test('FILTER-02 - Verify minimum and maximum price filters', async ({ page }) => {
-
+    test('FILTER-02 - Verify minimum and maximum price filters independently', async ({ page }) => {
         const minimumPrice = testData.search.filters.priceMinimum;
         const maximumPrice = testData.search.filters.priceMaximum;
-
-        await searchPage.setMinimumPrice(minimumPrice);
-        await searchPage.setMaximumPrice(maximumPrice);
-
         const minimumValue = minimumPrice.replace(/[^0-9]/g, '');
         const maximumValue = maximumPrice.replace(/[^0-9]/g, '');
 
-        // Verify minimum price selection
-        await expect.poll(() => searchPage.getSelectedPrice(0)).toBe(minimumPrice.replace(/[^0-9]/g, ''));
-
-        // Verify maximum price selection
-        await expect.poll(() => searchPage.getSelectedPrice(1)).toBe(maximumPrice.replace(/[^0-9]/g, ''));
-
-        // Verify both filters are applied
-        await expect.poll(() => searchPage.getPriceFacets()).toContain(`facets.price_range.from=${minimumValue}`);
-        await expect.poll(() => searchPage.getPriceFacets()).toContain(`facets.price_range.to=${maximumValue}`);
-
-        // Verify search query is retained
-        expect(new URL(page.url()).searchParams.get('q')).toBe(testData.search.query);
-
-        // Verify filtered products are displayed
+        await searchPage.setMinimumPrice(minimumPrice);
+        await expect.poll(() => searchPage.getPriceFacets())
+            .toContain(`facets.price_range.from=${minimumValue}`);
+        await expect.poll(() => searchPage.getSelectedPrice(0)).toBe(minimumValue);
         await expect(searchPage.resultCards.first()).toBeVisible();
+
+        await searchPage.openResults(testData.search.query);
+        await searchPage.setMaximumPrice(maximumPrice);
+        await expect.poll(() => searchPage.getPriceFacets())
+            .toContain(`facets.price_range.to=${maximumValue}`);
+        await expect.poll(() => searchPage.getSelectedPrice(1)).toBe(maximumValue);
+        await expect(searchPage.resultCards.first()).toBeVisible();
+
+        expect(new URL(page.url()).searchParams.get('q')).toBe(testData.search.query);
     });
 
     test('FILTER-04 - Verify sort option is available', async () => {

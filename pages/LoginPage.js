@@ -8,6 +8,7 @@ class LoginPage extends BasePage {
         this.mobileInput = page.getByRole('textbox', {name: 'Phone Number'});
         this.continueButton = page.getByRole('button', { name: /continue/i }).first();
         this.otpPrompt = page.getByText(/verification code/i).first();
+        this.otpLimitMessage = page.getByText(/maximum attempts reached/i).first();
         this.verifyButton = page.getByRole('button', { name: /^verify$/i }).first();
     }
 
@@ -30,10 +31,25 @@ class LoginPage extends BasePage {
 
     // Wait for OTP screen
     async waitForOtpScreen(timeout = 30000) {
-        await expect(
-            this.otpPrompt,
-            'OTP verification screen should appear'
-        ).toBeVisible({ timeout });
+        let screen;
+        await expect.poll(async () => {
+            if (await this.otpLimitMessage.isVisible()) {
+                screen = 'rate-limited';
+            } else if (await this.otpPrompt.isVisible()) {
+                screen = 'otp';
+            } else {
+                screen = undefined;
+            }
+            return screen;
+        }, {
+            message: 'OTP screen or a login rate-limit message should appear',
+            timeout
+        }).toBeTruthy();
+
+        if (screen === 'rate-limited') {
+            const message = await this.otpLimitMessage.innerText();
+            throw new Error(`Cannot request an OTP: ${message}`);
+        }
     }
 
     // Mobile number -> Continue -> OTP screen

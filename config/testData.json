@@ -49,7 +49,8 @@
 
   "searchSuggestions": {
     "searchTerm": "samsung mobile",
-    "expectedSuggestion": "samsung mobile 5g"
+    "expectedSuggestion": "samsung mobile 5g",
+    "expectedKeyword": "samsung"
   },
 
   "BuyNow": {
@@ -81,9 +82,9 @@
     "checkoutMode": "buyNow",
 
     "product": {
-    "searchTerm": "Samsung Galaxy S25",
-    "titleWordCount": 4
-},
+      "searchTerm": "Samsung Galaxy S25"
+    },
+    "expectedItemCount": 1,
 
     "login": {
   "promptTimeoutMs": 10000,

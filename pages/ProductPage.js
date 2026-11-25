@@ -40,14 +40,6 @@ class ProductPage extends BasePage {
             intervals: [500, 1500, 3000]
         });
     }
-
-    async clickBuyNowAfterLogin() {
-    console.log('Clicking Buy Now again after successful login...');
-
-    await expect(this.buyNowButton,'Buy Now button should be visible after login').toBeVisible({ timeout: 20000 });
-    await expect(this.buyNowButton).toBeEnabled();
-    await this.buyNowButton.click();
-}
 }
 
 module.exports = ProductPage;
