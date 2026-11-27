@@ -123,6 +123,18 @@
       "savings": "You['’]ll save\\s*₹\\s*([\\d,]+)"
     },
 
-    "paymentPageMarkers": "payment options|upi|net banking|cash on delivery|credit / debit"
-  }
+    "paymentPageMarkers": "payment options|upi|net banking|cash on delivery|credit / debit",
+
+    "addressData": {
+        "name": "Automation User",
+        "mobile": "9876543210",
+        "pincode": "600071",
+        "locality": "Anna Nagar",
+        "address": "2/5 Test Street, Automation Colony",
+        "city": "Chennai",
+        "landmark": "Near Bus Stand",
+        "alternatePhone": "9123456789",
+        "addressType": "Home"
+    }
 }
+    }
